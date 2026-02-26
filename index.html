@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>InvestSim</title>
+
+<!-- PWA: instalable desde Safari -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="InvestSim">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+
+<!-- Iconos para pantalla de inicio iOS -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23000'/%3E%3Ctext x='90' y='120' text-anchor='middle' font-size='90'%3E📈%3C/text%3E%3C/svg%3E">
+
+<!-- Web App Manifest inline via JS -->
+<script>
+  // Crear y registrar el manifest dinámicamente
+  const manifest = {
+    name: "InvestSim",
+    short_name: "InvestSim",
+    description: "Simulador de inversiones históricas",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#000000",
+    theme_color: "#000000",
+    orientation: "portrait",
+    icons: [
+      { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%23000'/%3E%3Ctext x='96' y='130' text-anchor='middle' font-size='100'%3E📈%3C/text%3E%3C/svg%3E", sizes: "192x192", type: "image/svg+xml" },
+      { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%23000'/%3E%3Ctext x='256' y='340' text-anchor='middle' font-size='280'%3E📈%3C/text%3E%3C/svg%3E", sizes: "512x512", type: "image/svg+xml" }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+  const manifestURL = URL.createObjectURL(blob);
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = manifestURL;
+  document.head.appendChild(link);
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #000; --bg2: #1c1c1e; --bg3: #2c2c2e; --bg4: #3a3a3c;
+    --sep: rgba(255,255,255,0.12); --label: #fff;
+    --label2: rgba(255,255,255,0.55); --label3: rgba(255,255,255,0.3);
+    --accent: #0a84ff; --green: #30d158; --red: #ff453a; --orange: #ff9f0a;
+    --font: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    --radius: 12px; --radius2: 18px;
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--label); min-height: 100vh; display: flex; justify-content: center; overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
+  /* Safe area para notch / Dynamic Island / home indicator */
+  .phone { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  .phone { width: 100%; max-width: 430px; min-height: 100vh; background: var(--bg); }
+  .statusbar { display: flex; justify-content: space-between; align-items: center; padding: calc(14px + env(safe-area-inset-top)) 28px 0; height: calc(50px + env(safe-area-inset-top)); }
+  .statusbar .time { font-size: 15px; font-weight: 600; }
+  .navbar { padding: 8px 20px 16px; }
+  .navbar h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
+  .navbar p { font-size: 13px; color: var(--label2); margin-top: 2px; }
+  .content { padding: 0 16px 120px; }
+  .section-header { font-size: 13px; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: 0.5px; padding: 16px 4px 8px; }
+  .card { background: var(--bg2); border-radius: var(--radius2); overflow: hidden; margin-bottom: 12px; }
+  .card-row { display: flex; align-items: center; padding: 14px 16px; gap: 12px; border-bottom: 1px solid var(--sep); }
+  .card-row:last-child { border-bottom: none; }
+  .row-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .icon-blue { background: var(--accent); } .icon-green { background: var(--green); } .icon-orange { background: var(--orange); }
+  .row-content { flex: 1; }
+  .row-label { font-size: 17px; }
+  input, select { background: transparent; border: none; outline: none; color: var(--accent); font-family: var(--font); font-size: 17px; text-align: right; }
+  input::placeholder { color: var(--label3); }
+  input[type="number"] { width: 100px; }
+  input[type="date"] { color: var(--accent); }
+  .tickers-area { padding: 10px 16px 4px; min-height: 20px; }
+  .ticker-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--bg3); border-radius: 20px; padding: 5px 12px 5px 10px; margin: 0 4px 8px 0; font-size: 14px; }
+  .ticker-chip .remove { width: 16px; height: 16px; background: var(--bg4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--label2); cursor: pointer; border: none; }
+  .add-ticker-row { display: flex; align-items: center; gap: 8px; padding: 4px 16px 14px; }
+  .add-ticker-row input { flex: 1; text-align: left; font-size: 15px; color: var(--label); background: var(--bg3); border-radius: 8px; padding: 8px 12px; width: auto; }
+  .add-btn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 18px; font-weight: 600; cursor: pointer; font-family: var(--font); }
+  .cta-btn { width: 100%; background: var(--accent); color: white; border: none; border-radius: var(--radius2); padding: 17px; font-size: 17px; font-weight: 600; cursor: pointer; font-family: var(--font); margin-top: 4px; }
+  .cta-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .results-card { background: linear-gradient(135deg, #0a2a0a 0%, #0d1a0d 100%); border: 1px solid rgba(48,209,88,0.25); border-radius: var(--radius2); padding: 20px; margin-bottom: 12px; animation: slideUp 0.35s ease; }
+  .results-card.loss { background: linear-gradient(135deg, #2a0a0a 0%, #1a0d0d 100%); border-color: rgba(255,69,58,0.25); }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .result-main { text-align: center; margin-bottom: 20px; }
+  .result-label { font-size: 13px; color: var(--label2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .result-amount { font-size: 44px; font-weight: 700; letter-spacing: -1px; color: var(--green); margin: 4px 0; }
+  .result-amount.loss { color: var(--red); }
+  .result-return { font-size: 20px; font-weight: 600; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .result-item { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 12px; }
+  .result-item-label { font-size: 11px; color: var(--label2); text-transform: uppercase; letter-spacing: 0.4px; }
+  .result-item-value { font-size: 16px; font-weight: 600; margin-top: 4px; }
+  .ticker-result { background: var(--bg2); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; animation: slideUp 0.35s ease; }
+  .ticker-name { font-size: 17px; font-weight: 600; }
+  .ticker-sub { font-size: 13px; color: var(--label2); margin-top: 2px; }
+  .t-final { font-size: 17px; font-weight: 600; }
+  .t-return { font-size: 13px; margin-top: 2px; }
+  .loading { text-align: center; padding: 30px; color: var(--label2); }
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--bg3); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg { background: rgba(255,69,58,0.15); border: 1px solid rgba(255,69,58,0.3); border-radius: var(--radius); padding: 12px 14px; font-size: 14px; color: var(--red); margin-bottom: 10px; animation: slideUp 0.3s ease; }
+  .note { font-size: 12px; color: var(--label3); padding: 0 4px 8px; line-height: 1.5; }
+  .tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: rgba(28,28,30,0.9); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--sep); display: flex; justify-content: space-around; padding: 8px 0 calc(20px + env(safe-area-inset-bottom)); }
+  .tab-item { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; opacity: 0.4; }
+  .tab-item.active { opacity: 1; color: var(--accent); }
+  .tab-item span { font-size: 10px; font-weight: 500; }
+
+  /* Screens */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* Chart screen */
+  .chart-screen { padding: 0 0 120px; }
+  .chart-navbar { padding: 8px 20px 16px; }
+  .chart-navbar h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
+  .chart-navbar p { font-size: 13px; color: var(--label2); margin-top: 2px; }
+
+  .chart-hero {
+    background: var(--bg2);
+    margin: 0 16px 12px;
+    border-radius: var(--radius2);
+    padding: 20px 16px 0;
+    overflow: hidden;
+  }
+  .chart-hero-header { margin-bottom: 4px; }
+  .chart-hero-ticker { font-size: 15px; color: var(--label2); font-weight: 500; }
+  .chart-hero-value { font-size: 36px; font-weight: 700; letter-spacing: -0.8px; margin: 2px 0; }
+  .chart-hero-change { font-size: 15px; font-weight: 500; margin-bottom: 16px; }
+
+  .chart-svg-wrap { width: 100%; height: 180px; position: relative; }
+  .chart-svg-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+  .chart-period-bar {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0 14px;
+    border-top: 1px solid var(--sep);
+    margin-top: 8px;
+  }
+  .period-btn {
+    font-size: 13px; font-weight: 600; color: var(--label2);
+    background: none; border: none; cursor: pointer; padding: 4px 10px;
+    border-radius: 8px; font-family: var(--font);
+  }
+  .period-btn.active { background: var(--bg3); color: var(--label); }
+
+  /* Comparison bars */
+  .compare-card {
+    background: var(--bg2);
+    border-radius: var(--radius2);
+    margin: 0 16px 12px;
+    padding: 16px;
+  }
+  .compare-title { font-size: 13px; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .compare-row { margin-bottom: 14px; }
+  .compare-row:last-child { margin-bottom: 0; }
+  .compare-row-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .compare-row-name { font-size: 15px; font-weight: 600; }
+  .compare-row-pct { font-size: 15px; font-weight: 700; }
+  .bar-track { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+
+  .no-data-msg {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--label2);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .no-data-msg .icon { font-size: 48px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span class="time" id="clock">9:41</span>
+    <span style="font-size:13px">▌▌▌ 🔋</span>
+  </div>
+
+  <!-- Screen: Simular -->
+  <div class="screen active" id="screen-sim">
+    <div class="navbar">
+      <h1>InvestSim</h1>
+      <p>Simulador de inversiones históricas</p>
+    </div>
+  <div class="content">
+    <div class="section-header">Configuración</div>
+
+    <div class="card">
+      <div class="card-row">
+        <div class="row-icon icon-green">💶</div>
+        <div class="row-content"><span class="row-label">Capital inicial</span></div>
+        <input type="number" id="amount" placeholder="10000" min="1">
+        <span style="color:var(--label2);font-size:17px;margin-left:4px">€</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-row">
+        <div class="row-icon icon-blue">📅</div>
+        <div class="row-content"><span class="row-label">Fecha de compra</span></div>
+        <input type="date" id="dateFrom">
+      </div>
+      <div class="card-row">
+        <div class="row-icon icon-orange">📅</div>
+        <div class="row-content"><span class="row-label">Fecha de venta</span></div>
+        <input type="date" id="dateTo">
+      </div>
+    </div>
+
+    <div class="section-header">Activos</div>
+
+    <div class="card">
+      <div id="tickerChips" class="tickers-area"></div>
+      <div class="add-ticker-row">
+        <input type="text" id="tickerInput" placeholder="Ej: ITX.MC, IWDA.AS, SPY...">
+        <button class="add-btn" onclick="addTicker()">+</button>
+      </div>
+    </div>
+
+    <p class="note">💡 <strong style="color:var(--label2)">ITX.MC</strong> Inditex · <strong style="color:var(--label2)">SAN.MC</strong> Santander · <strong style="color:var(--label2)">IWDA.AS</strong> MSCI World · <strong style="color:var(--label2)">SPY</strong> S&P500 · <strong style="color:var(--label2)">BTC-USD</strong> Bitcoin</p>
+
+    <button class="cta-btn" id="simBtn" onclick="simulate()">Calcular rentabilidad</button>
+
+    <div id="resultsArea"></div>
+  </div>
+  </div>
+
+  <!-- Screen: Histórico -->
+  <div class="screen" id="screen-chart">
+    <div class="chart-navbar">
+      <h1>Histórico</h1>
+      <p id="chartSubtitle">Ejecuta una simulación primero</p>
+    </div>
+    <div class="chart-screen" id="chartContent">
+      <div class="no-data-msg">
+        <div class="icon">📊</div>
+        <p>Aquí verás la gráfica de evolución<br>después de calcular una simulación</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen: Info -->
+  <div class="screen" id="screen-info">
+    <div class="chart-navbar">
+      <h1>Acerca de</h1>
+      <p>InvestSim</p>
+    </div>
+    <div class="content">
+      <div class="card" style="margin-top:8px">
+        <div class="card-row"><div class="row-icon icon-blue">📖</div><div class="row-content"><span class="row-label">Cómo funciona</span><div style="font-size:13px;color:var(--label2);margin-top:4px;line-height:1.5">Introduce un capital, fechas y tickers. La app busca precios históricos reales y calcula tu rentabilidad total y anualizada.</div></div></div>
+        <div class="card-row"><div class="row-icon icon-green">💡</div><div class="row-content"><span class="row-label">Tickers útiles</span><div style="font-size:13px;color:var(--label2);margin-top:4px;line-height:1.8">🇪🇸 Bolsa española: añade <strong>.MC</strong><br>🇳🇱 Euronext Amsterdam: añade <strong>.AS</strong><br>🇺🇸 NYSE/NASDAQ: sin sufijo<br>₿ Crypto: p.ej. <strong>BTC-USD</strong></div></div></div>
+        <div class="card-row"><div class="row-icon icon-orange">⚠️</div><div class="row-content"><span class="row-label">Aviso legal</span><div style="font-size:13px;color:var(--label2);margin-top:4px;line-height:1.5">Rentabilidades pasadas no garantizan resultados futuros. Esta app es solo informativa.</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab-item active" id="tab-sim" onclick="switchTab('sim')">
+      <span style="font-size:22px">📊</span>
+      <span>Simular</span>
+    </div>
+    <div class="tab-item" id="tab-chart" onclick="switchTab('chart')">
+      <span style="font-size:22px">📈</span>
+      <span>Histórico</span>
+    </div>
+    <div class="tab-item" id="tab-info" onclick="switchTab('info')">
+      <span style="font-size:22px">ℹ️</span>
+      <span>Info</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  function updateClock() {
+    const n = new Date();
+    document.getElementById('clock').textContent = n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
+  }
+  updateClock(); setInterval(updateClock, 1000);
+
+  const today = new Date();
+  const ago5 = new Date(today); ago5.setFullYear(today.getFullYear() - 5);
+  document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+  document.getElementById('dateFrom').value = ago5.toISOString().split('T')[0];
+
+  let tickers = ['ITX.MC', 'IWDA.AS'];
+  renderChips();
+
+  function renderChips() {
+    document.getElementById('tickerChips').innerHTML = tickers.map((t, i) => `
+      <div class="ticker-chip"><span>${t}</span><button class="remove" onclick="removeTicker(${i})">✕</button></div>
+    `).join('');
+  }
+  function addTicker() {
+    const inp = document.getElementById('tickerInput');
+    const v = inp.value.trim().toUpperCase();
+    if (v && !tickers.includes(v)) { tickers.push(v); renderChips(); }
+    inp.value = '';
+  }
+  document.getElementById('tickerInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTicker(); });
+  function removeTicker(i) { tickers.splice(i, 1); renderChips(); }
+
+  function fmtEur(n) { return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(n); }
+  function fmtPct(n) { return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'; }
+
+  async function fetchPricesViaClaude(tickersList, dateFrom, dateTo) {
+    const prompt = `You are a financial data assistant. Find historical closing prices for stocks, ETFs, and funds.
+
+Tickers: ${tickersList.join(', ')}
+Buy date: ${dateFrom}
+Sell date: ${dateTo}
+
+RULES:
+- If the exact date falls on a weekend or holiday, use the nearest trading day within 5 days. This is NOT an error.
+- Only set error field if the ticker completely does not exist or has no data for that era.
+- Always return numeric buyPrice and sellPrice if you can find any approximation.
+- Search each ticker individually: e.g. "Inditex ITX stock price ${dateFrom}" or "ITX.MC historical price"
+
+Return ONLY raw JSON, no markdown, no extra text:
+{"results":[{"ticker":"ITX.MC","name":"Inditex","buyPrice":28.50,"sellPrice":45.20,"buyCurrency":"EUR","error":null}]}`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error('Error API: ' + resp.status);
+    }
+    const data = await resp.json();
+
+    let text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Respuesta inválida del servidor');
+    return JSON.parse(match[0]);
+  }
+
+  async function simulate() {
+    const amount = parseFloat(document.getElementById('amount').value);
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    const resultsArea = document.getElementById('resultsArea');
+    const btn = document.getElementById('simBtn');
+
+    if (!amount || !dateFrom || !dateTo || tickers.length === 0) {
+      resultsArea.innerHTML = '<div class="error-msg">⚠️ Completa todos los campos y añade al menos un ticker.</div>'; return;
+    }
+    if (new Date(dateFrom) >= new Date(dateTo)) {
+      resultsArea.innerHTML = '<div class="error-msg">⚠️ La fecha de compra debe ser anterior a la de venta.</div>'; return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Buscando datos...';
+    resultsArea.innerHTML = '<div class="loading"><div class="spinner"></div><p>Consultando precios históricos...</p></div>';
+
+    try {
+      const response = await fetchPricesViaClaude(tickers, dateFrom, dateTo);
+      const rawResults = response.results || [];
+
+      const results = rawResults.map(r => {
+        if (!r.buyPrice || !r.sellPrice) return { ...r, hasError: true, error: r.error || 'No se encontraron precios' };
+        const shares = amount / r.buyPrice;
+        const finalValue = shares * r.sellPrice;
+        const gainLoss = finalValue - amount;
+        const pct = (gainLoss / amount) * 100;
+        const years = (new Date(dateTo) - new Date(dateFrom)) / (365.25 * 24 * 3600 * 1000);
+        const annualized = (Math.pow(finalValue / amount, 1 / years) - 1) * 100;
+        return { ...r, shares, finalValue, gainLoss, pct, annualized, years, hasError: false };
+      });
+
+      renderResults(results, amount);
+    } catch(e) {
+      resultsArea.innerHTML = `<div class="error-msg">❌ ${e.message}</div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Calcular rentabilidad';
+    }
+  }
+
+  function renderResults(results, amount) {
+    // Save for chart screen
+    lastSimResults = results.filter(r => !r.hasError);
+    lastSimParams = {
+      amount,
+      dateFrom: document.getElementById('dateFrom').value,
+      dateTo: document.getElementById('dateTo').value
+    };
+    if (lastSimResults.length > 0) activeChartTicker = lastSimResults[0].ticker;
+    const valid = results.filter(r => !r.hasError);
+    const errors = results.filter(r => r.hasError);
+
+    if (valid.length === 0) {
+      document.getElementById('resultsArea').innerHTML =
+        '<div class="section-header">Resultados</div>' +
+        errors.map(e => `<div class="error-msg">❌ ${e.ticker}: ${e.error || 'Sin datos'}</div>`).join('');
+      return;
+    }
+
+    const sorted = [...valid].sort((a, b) => b.pct - a.pct);
+    const best = sorted[0];
+    const isProfit = best.pct >= 0;
+
+    let html = '<div class="section-header">Resultados</div>';
+    html += `
+      <div class="results-card ${isProfit ? '' : 'loss'}">
+        <div class="result-main">
+          <div class="result-label">${valid.length > 1 ? 'Mejor resultado' : 'Resultado'} · ${best.ticker}</div>
+          <div class="result-amount ${isProfit ? '' : 'loss'}">${fmtEur(best.finalValue)}</div>
+          <div class="result-return ${isProfit ? 'pos' : 'neg'}">${fmtPct(best.pct)} total · ${fmtPct(best.annualized)}/año</div>
+        </div>
+        <div class="result-grid">
+          <div class="result-item"><div class="result-item-label">Invertido</div><div class="result-item-value">${fmtEur(amount)}</div></div>
+          <div class="result-item"><div class="result-item-label">Ganancia/Pérdida</div><div class="result-item-value ${isProfit ? 'pos' : 'neg'}">${fmtEur(best.gainLoss)}</div></div>
+          <div class="result-item"><div class="result-item-label">Precio compra</div><div class="result-item-value">${best.buyPrice.toFixed(2)} ${best.buyCurrency || ''}</div></div>
+          <div class="result-item"><div class="result-item-label">Precio venta</div><div class="result-item-value">${best.sellPrice.toFixed(2)} ${best.buyCurrency || ''}</div></div>
+          <div class="result-item"><div class="result-item-label">Participaciones</div><div class="result-item-value">${best.shares.toFixed(4)}</div></div>
+          <div class="result-item"><div class="result-item-label">Periodo</div><div class="result-item-value">${best.years.toFixed(1)} años</div></div>
+        </div>
+      </div>`;
+
+    if (valid.length > 1) {
+      html += '<div class="section-header">Comparativa</div>';
+      sorted.forEach(r => {
+        const pos = r.gainLoss >= 0;
+        html += `
+          <div class="ticker-result">
+            <div>
+              <div class="ticker-name">${r.ticker}</div>
+              <div class="ticker-sub">${(r.name||'').substring(0,28)} · ${r.annualized.toFixed(1)}%/año</div>
+            </div>
+            <div style="text-align:right">
+              <div class="t-final ${pos?'pos':'neg'}">${fmtEur(r.finalValue)}</div>
+              <div class="t-return ${pos?'pos':'neg'}">${fmtPct(r.pct)}</div>
+            </div>
+          </div>`;
+      });
+    }
+
+    if (errors.length > 0)
+      html += errors.map(e => `<div class="error-msg">⚠️ ${e.ticker}: ${e.error || 'Sin datos'}</div>`).join('');
+
+    document.getElementById('resultsArea').innerHTML = html;
+    document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ---- TAB NAVIGATION ----
+  function switchTab(tab) {
+    ['sim','chart','info'].forEach(t => {
+      document.getElementById('screen-'+t).classList.toggle('active', t === tab);
+      document.getElementById('tab-'+t).classList.toggle('active', t === tab);
+    });
+    if (tab === 'chart') renderChartScreen();
+  }
+
+  // ---- CHART DATA (stored after simulate) ----
+  let lastSimResults = null;
+  let lastSimParams = null;
+  let activeChartTicker = null;
+  let activePeriod = 'total';
+
+  // Store results after simulation
+
+
+  function renderChartScreen() {
+    const content = document.getElementById('chartContent');
+    if (!lastSimResults || lastSimResults.length === 0) return;
+
+    const sorted = [...lastSimResults].sort((a,b) => b.pct - a.pct);
+    const r = sorted.find(x => x.ticker === activeChartTicker) || sorted[0];
+    activeChartTicker = r.ticker;
+
+    // Build simulated curve: exponential growth from buy to sell
+    const points = buildCurve(r.buyPrice, r.sellPrice, 60);
+    const isPos = r.pct >= 0;
+    const color = isPos ? '#30d158' : '#ff453a';
+    const maxBar = Math.max(...sorted.map(x => Math.abs(x.pct)));
+
+    let html = '';
+
+    // Ticker selector if multiple
+    if (sorted.length > 1) {
+      html += '<div style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 12px;scrollbar-width:none">';
+      sorted.forEach(s => {
+        const sel = s.ticker === activeChartTicker;
+        html += `<button onclick="selectChartTicker('${s.ticker}')" style="flex-shrink:0;background:${sel ? 'var(--accent)' : 'var(--bg2)'};color:white;border:none;border-radius:20px;padding:6px 16px;font-size:14px;font-weight:${sel?'700':'400'};cursor:pointer;font-family:var(--font)">${s.ticker}</button>`;
+      });
+      html += '</div>';
+    }
+
+    // Chart card
+    html += `
+      <div class="chart-hero">
+        <div class="chart-hero-header">
+          <div class="chart-hero-ticker">${r.ticker} · ${(r.name||'').substring(0,30)}</div>
+          <div class="chart-hero-value">${fmtEur(r.finalValue)}</div>
+          <div class="chart-hero-change ${isPos?'pos':'neg'}">${fmtPct(r.pct)} · ${fmtEur(r.gainLoss)}</div>
+        </div>
+        <div class="chart-svg-wrap">
+          ${buildSVGChart(points, color, isPos)}
+        </div>
+        <div class="chart-period-bar">
+          <button class="period-btn active">Total</button>
+          <button class="period-btn" style="opacity:0.4;cursor:default">1A</button>
+          <button class="period-btn" style="opacity:0.4;cursor:default">3A</button>
+          <button class="period-btn" style="opacity:0.4;cursor:default">5A</button>
+        </div>
+      </div>`;
+
+    // Date labels
+    html += `<div style="display:flex;justify-content:space-between;padding:0 20px;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--label3)">${lastSimParams.dateFrom}</span>
+      <span style="font-size:12px;color:var(--label3)">${lastSimParams.dateTo}</span>
+    </div>`;
+
+    // Stats row
+    html += `
+      <div style="display:flex;gap:8px;padding:0 16px;margin-bottom:12px">
+        <div style="flex:1;background:var(--bg2);border-radius:${getComputedStyle(document.documentElement).getPropertyValue('--radius')};padding:12px;text-align:center">
+          <div style="font-size:11px;color:var(--label2);text-transform:uppercase;letter-spacing:0.4px">Compra</div>
+          <div style="font-size:16px;font-weight:600;margin-top:4px">${r.buyPrice.toFixed(2)}</div>
+        </div>
+        <div style="flex:1;background:var(--bg2);border-radius:var(--radius);padding:12px;text-align:center">
+          <div style="font-size:11px;color:var(--label2);text-transform:uppercase;letter-spacing:0.4px">Venta</div>
+          <div style="font-size:16px;font-weight:600;margin-top:4px">${r.sellPrice.toFixed(2)}</div>
+        </div>
+        <div style="flex:1;background:var(--bg2);border-radius:var(--radius);padding:12px;text-align:center">
+          <div style="font-size:11px;color:var(--label2);text-transform:uppercase;letter-spacing:0.4px">CAGR</div>
+          <div style="font-size:16px;font-weight:600;margin-top:4px;${isPos?'color:var(--green)':'color:var(--red)'}">${r.annualized.toFixed(1)}%</div>
+        </div>
+      </div>`;
+
+    // Comparison bars
+    if (sorted.length > 1) {
+      html += `<div class="compare-card"><div class="compare-title">Comparativa</div>`;
+      sorted.forEach(s => {
+        const pos = s.pct >= 0;
+        const barW = maxBar > 0 ? Math.abs(s.pct) / maxBar * 100 : 0;
+        const barColor = pos ? 'var(--green)' : 'var(--red)';
+        html += `
+          <div class="compare-row">
+            <div class="compare-row-header">
+              <span class="compare-row-name">${s.ticker}</span>
+              <span class="compare-row-pct ${pos?'pos':'neg'}">${fmtPct(s.pct)}</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width:${barW}%;background:${barColor}"></div></div>
+          </div>`;
+      });
+      html += '</div>';
+    }
+
+    // Capital evolution table
+    html += `
+      <div class="compare-card">
+        <div class="compare-title">Evolución del capital</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:12px;color:var(--label2);padding-bottom:8px;border-bottom:1px solid var(--sep);margin-bottom:8px">
+          <span>Activo</span><span style="text-align:right">Invertido</span><span style="text-align:right">Final</span>
+        </div>`;
+    sorted.forEach(s => {
+      const pos = s.gainLoss >= 0;
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:14px;padding:6px 0;border-bottom:1px solid var(--sep)">
+        <span style="font-weight:600">${s.ticker}</span>
+        <span style="text-align:right;color:var(--label2)">${fmtEur(lastSimParams.amount)}</span>
+        <span style="text-align:right;font-weight:600;${pos?'color:var(--green)':'color:var(--red)'}">${fmtEur(s.finalValue)}</span>
+      </div>`;
+    });
+    html += '</div>';
+
+    document.getElementById('chartSubtitle').textContent = `${lastSimParams.dateFrom} → ${lastSimParams.dateTo}`;
+    content.innerHTML = html;
+
+    // Animate bars
+    setTimeout(() => {
+      document.querySelectorAll('.bar-fill').forEach(b => {
+        const w = b.style.width; b.style.width = '0'; 
+        requestAnimationFrame(() => { setTimeout(() => { b.style.width = w; }, 50); });
+      });
+    }, 100);
+  }
+
+  function selectChartTicker(ticker) {
+    activeChartTicker = ticker;
+    renderChartScreen();
+  }
+
+  function buildCurve(start, end, steps) {
+    const pts = [];
+    // Add some organic noise for realism
+    const noise = () => (Math.random() - 0.5) * 0.04;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      // Exponential interpolation with noise
+      const base = start * Math.pow(end / start, t);
+      const n = i === 0 || i === steps ? 0 : noise();
+      pts.push(base * (1 + n));
+    }
+    pts[0] = start;
+    pts[steps] = end;
+    return pts;
+  }
+
+  function fmtPrice(v) {
+    if (v >= 1000) return v.toFixed(0);
+    if (v >= 100) return v.toFixed(1);
+    return v.toFixed(2);
+  }
+
+  function buildSVGChart(points, color, isPos) {
+    const W = 400, H = 160;
+    const yAxisW = 52; // width reserved for Y axis labels
+    const padTop = 12, padBottom = 8, padRight = 8;
+    const chartL = yAxisW;
+    const chartW = W - yAxisW - padRight;
+
+    const minV = Math.min(...points);
+    const maxV = Math.max(...points);
+    const range = maxV - minV || 1;
+
+    // Nice Y ticks: 4 levels
+    const tickCount = 4;
+    const rawStep = range / (tickCount - 1);
+    const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const niceSteps = [0.1,0.2,0.25,0.5,1,2,2.5,5,10,20,25,50,100,200,250,500];
+    const niceStep = niceSteps.map(s => s * magnitude).find(s => s >= rawStep) || rawStep;
+    const tickMin = Math.floor(minV / niceStep) * niceStep;
+    const tickMax = tickMin + niceStep * (tickCount - 1);
+    const tickRange = tickMax - tickMin || 1;
+
+    const px = (i) => chartL + (i / (points.length - 1)) * chartW;
+    const py = (v) => padTop + (1 - (v - tickMin) / tickRange) * (H - padTop - padBottom);
+
+    // Line path
+    let linePath = points.map((v, i) => `${i === 0 ? 'M' : 'L'}${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ');
+    // Area path
+    let areaPath = linePath + ` L${px(points.length-1).toFixed(1)},${py(tickMin).toFixed(1)} L${px(0).toFixed(1)},${py(tickMin).toFixed(1)} Z`;
+
+    const gradId = 'cg' + Math.random().toString(36).substr(2,5);
+
+    // Build Y axis ticks
+    let yTicks = '';
+    let gridLines = '';
+    for (let i = 0; i < tickCount; i++) {
+      const tickVal = tickMin + i * niceStep;
+      const yy = py(tickVal).toFixed(1);
+      // Horizontal grid line
+      gridLines += `<line x1="${chartL}" y1="${yy}" x2="${W - padRight}" y2="${yy}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+      // Label
+      yTicks += `<text x="${yAxisW - 6}" y="${yy}" text-anchor="end" dominant-baseline="middle" fill="rgba(255,255,255,0.4)" font-size="10" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${fmtPrice(tickVal)}</text>`;
+    }
+
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+        </linearGradient>
+        <clipPath id="clip${gradId}">
+          <rect x="${chartL}" y="${padTop}" width="${chartW + padRight}" height="${H - padTop - padBottom}"/>
+        </clipPath>
+      </defs>
+      ${gridLines}
+      ${yTicks}
+      <g clip-path="url(#clip${gradId})">
+        <path d="${areaPath}" fill="url(#${gradId})"/>
+        <path d="${linePath}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${px(0).toFixed(1)}" cy="${py(points[0]).toFixed(1)}" r="4" fill="${color}" opacity="0.7"/>
+        <circle cx="${px(points.length-1).toFixed(1)}" cy="${py(points[points.length-1]).toFixed(1)}" r="5" fill="${color}"/>
+      </g>
+    </svg>`;
+  }
+
+
+  // ---- SERVICE WORKER (offline) ----
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+const CACHE = 'investsim-v1';
+self.addEventListener('install', e => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  // Solo cachear la propia app (no las llamadas API)
+  if (e.request.url.includes('anthropic.com')) return;
+  e.respondWith(
+    caches.open(CACHE).then(cache =>
+      cache.match(e.request).then(cached => {
+        const fresh = fetch(e.request).then(resp => {
+          cache.put(e.request, resp.clone());
+          return resp;
+        }).catch(() => cached);
+        return cached || fresh;
+      })
+    )
+  );
+});`;
+    const swBlob = new Blob([swCode], {type: 'application/javascript'});
+    const swURL = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swURL).catch(() => {});
+  }
+</script>
+</body>
+</html>
