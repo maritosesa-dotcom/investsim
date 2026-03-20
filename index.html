@@ -939,16 +939,17 @@ async function buscarAccion() {
   status.innerHTML = `<div style="font-size:12px;color:var(--text3);font-family:var(--font-mono);padding:6px 0">Buscando ${query}...</div>`;
   result.innerHTML = '';
 
-  // Yahoo Finance via allorigins proxy (no API key needed)
-  const ticker = query;
-  const proxyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1mo&range=10y`;
-  const url = `https://api.allorigins.win/get?url=${encodeURIComponent(proxyUrl)}`;
-
+  // Yahoo Finance via Cloudflare Worker
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Error de red');
-    const wrapper = await res.json();
-    const data = JSON.parse(wrapper.contents);
+    if (!workerUrl) throw new Error('Configura el Worker en la pestaña Config para buscar acciones.');
+
+    const res = await fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker })
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const data = await res.json();
 
     const chart = data?.chart?.result?.[0];
     if (!chart) throw new Error('Empresa no encontrada. Prueba con el ticker exacto (ej: AAPL, ITX.MC)');
@@ -1564,7 +1565,6 @@ const WORKER_CODE = `// InvestSim - Cloudflare Worker
 
 export default {
   async fetch(request, env) {
-    // CORS headers
     const headers = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -1582,10 +1582,24 @@ export default {
 
     try {
       const body = await request.json();
-      const { prompt } = body;
+      const { prompt, ticker } = body;
 
+      // === YAHOO FINANCE PROXY ===
+      if (ticker) {
+        const url = \`https://query1.finance.yahoo.com/v8/finance/chart/\${encodeURIComponent(ticker)}?interval=1mo&range=10y\`;
+        const res = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        if (!res.ok) {
+          return new Response(JSON.stringify({ error: \`Yahoo Finance error: \${res.status}\` }), { status: res.status, headers });
+        }
+        const data = await res.json();
+        return new Response(JSON.stringify(data), { headers });
+      }
+
+      // === ANTHROPIC AI ===
       if (!prompt) {
-        return new Response(JSON.stringify({ error: 'Missing prompt' }), { status: 400, headers });
+        return new Response(JSON.stringify({ error: 'Missing prompt or ticker' }), { status: 400, headers });
       }
 
       const response = await fetch('https://api.anthropic.com/v1/messages', {
